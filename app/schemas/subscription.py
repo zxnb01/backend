@@ -1,21 +1,12 @@
-# from pydantic import BaseModel, HttpUrl
-# from uuid import UUID
-# from typing import Optional
-
-# class SubscriptionCreate(BaseModel):
-#     target_url: HttpUrl
-#     event_type: str
-
-# class SubscriptionOut(SubscriptionCreate):
-#     id: UUID
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl, conint
 from datetime import datetime
+from typing import Optional
 
 class SubscriptionBase(BaseModel):
-    target_url: str
+    target_url: HttpUrl
 
 class SubscriptionCreate(SubscriptionBase):
-    webhook_id: int
+    webhook_id: conint(gt=0)
 
 class Subscription(SubscriptionBase):
     id: int
@@ -23,4 +14,11 @@ class Subscription(SubscriptionBase):
     webhook_id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True  # Correct for Pydantic v2.x
+
+class SubscriptionUpdate(BaseModel):
+    target_url: Optional[HttpUrl] = None
+    webhook_id: Optional[conint(gt=0)] = None
+
+    class Config:
+        from_attributes = True  # Correct for Pydantic v2.x

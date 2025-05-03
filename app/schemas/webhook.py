@@ -1,7 +1,10 @@
 from pydantic import BaseModel
-from typing import Any
+from typing import Dict, Any
 
 class WebhookPayload(BaseModel):
-    # Define the structure of your webhook payload here if you have a common structure
-    # Otherwise, you can use a generic type like Dict[str, Any]
-    payload: Any
+    payload: Any  # Keep if you still need this
+
+class Webhook(BaseModel):
+    event: str
+    timestamp: str
+    payload: Dict[str, Any]

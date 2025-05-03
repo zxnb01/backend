@@ -1,83 +1,47 @@
-# # from pydantic_settings import BaseSettings
-# # class Settings(BaseSettings):
-# #     # Use the Docker service name "postgres" to reference the PostgreSQL container
-# #     DATABASE_URL: str = "postgresql://user:password@postgres:5432/webhook_service_db"
-
-# # settings = Settings()
-# import os
-
-# DATABASE_URL = f"postgresql://{os.environ['DB_USER']}:{os.environ['DB_PASSWORD']}@{os.environ['DB_HOST']}:{os.environ['DB_PORT']}/{os.environ['DB_NAME']}"
-# CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://redis:6379/0")
-# CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "redis://redis:6379/0")
-# DELIVERY_TIMEOUT = 10  # seconds
-# LOG_RETENTION_HOURS = 72
-# MAX_RETRIES = 5
-# RETRY_DELAYS = [10, 30, 60, 300, 900]  # seconds
-
-# from pydantic import BaseSettings
-# from functools import lru_cache
-# import os
-
-# class Settings(BaseSettings):
-#     # Database settings
-#     db_host: str = os.environ.get("POSTGRES_HOST", "postgres")
-#     db_port: int = int(os.environ.get("POSTGRES_PORT", "5432"))
-#     db_user: str = os.environ.get("POSTGRES_USER", "user")
-#     db_password: str = os.environ.get("POSTGRES_PASSWORD", "password")
-#     db_name: str = os.environ.get("POSTGRES_DB", "webhook_service_db")
-#     database_url: str = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
-
-#     # Redis settings
-#     redis_host: str = os.environ.get("REDIS_HOST", "redis")
-#     redis_port: int = int(os.environ.get("REDIS_PORT", "6379"))
-#     redis_url: str = f"redis://{redis_host}:{redis_port}"
-
-#     # Celery settings (if needed here, otherwise in worker.py)
-#     celery_broker_url: str = f"redis://{redis_host}:{redis_port}"
-#     celery_result_backend: str = f"redis://{redis_host}:{redis_port}"
-
-#     # Other settings
-#     delivery_timeout: int = 10  # Seconds
-#     max_retries: int = 3
-#     retry_delays: list[int] = [5, 10, 20]  # Example retry delays in seconds
-
-#     class Config:
-#         case_sensitive = True  # Make environment variable names case-sensitive
-
-# @lru_cache()
-# def get_settings() -> Settings:
-#     return Settings()
-
-# settings = get_settings()
-from pydantic_settings import BaseSettings # Change this line
+# app/core/config.py
+from pydantic_settings import BaseSettings
 from functools import lru_cache
 import os
-
 class Settings(BaseSettings):
-    # ... (rest of your settings class)
-    db_host: str = os.environ.get("POSTGRES_HOST", "postgres")
-    db_port: int = int(os.environ.get("POSTGRES_PORT", "5432"))
-    db_user: str = os.environ.get("POSTGRES_USER", "user")
-    db_password: str = os.environ.get("POSTGRES_PASSWORD", "password")
-    db_name: str = os.environ.get("POSTGRES_DB", "webhook_service_db")
-    database_url: str = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    # Database pieces
+    db_host: str = "postgres"
+    db_port: int = 5432
+    db_user: str = "user"
+    db_password: str = "password"
+    db_name: str = "webhook_service_db"
+    database_url: str = ""             # give default so it's not required
 
-    # Redis settings
-    redis_host: str = os.environ.get("REDIS_HOST", "redis")
-    redis_port: int = int(os.environ.get("REDIS_PORT", "6379"))
-    redis_url: str = f"redis://{redis_host}:{redis_port}"
+    # Redis pieces
+    redis_host: str = "redis"
+    redis_port: int = 6379
+    redis_url: str = ""                # default
 
-    # Celery settings (if needed here, otherwise in worker.py)
-    celery_broker_url: str = f"redis://{redis_host}:{redis_port}"
-    celery_result_backend: str = f"redis://{redis_host}:{redis_port}"
+    # Celery pieces
+    celery_broker_url: str = ""        # default
+    celery_result_backend: str = ""    # default
 
     # Other settings
-    delivery_timeout: int = 10  # Seconds
+    delivery_timeout: int = 10         # seconds
     max_retries: int = 3
-    retry_delays: list[int] = [5, 10, 20]  # Example retry delays in seconds
+    retry_delays: list[int] = [5, 10, 20]
 
     class Config:
-        case_sensitive = True  # Make environment variable names case-sensitive
+        case_sensitive = True
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Now that all db_*, redis_*, etc. are initialized, build the URLs
+        self.database_url = (
+            f"postgresql://{self.db_user}:"
+            f"{self.db_password}@{self.db_host}:"
+            f"{self.db_port}/{self.db_name}"
+        )
+        self.redis_url = f"redis://{self.redis_host}:{self.redis_port}"
+        # Often broker/backend are the same as redis_url
+        self.celery_broker_url = self.redis_url
+        self.celery_result_backend = self.redis_url
 
 @lru_cache()
 def get_settings() -> Settings:
